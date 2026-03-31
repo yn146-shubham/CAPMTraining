@@ -1,0 +1,22 @@
+###
+POST   http://localhost:4004/odata/v4/processor/Customers
+Content-Type: application/json
+
+{
+      
+      "ID": "12345",
+      "firstName": "Shubham",
+      "lastName": "Test",
+      "name": "Sunny Sunshine",
+      "email": "sunny.sunshine@demo.com",
+      "phone": "+49-555-789",
+      "creditCardNo": null
+    }
+
+### 
+POST http://localhost:4004/odata/v4/processor/readCreditCardNumber
+Content-Type: application/json
+
+{
+    "Customer":"1002"
+}

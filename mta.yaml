@@ -1,0 +1,157 @@
+_schema-version: 3.3.0
+ID: CAPMTraining
+description: A simple CAP project.
+version: 1.0.0
+
+modules:
+  - name: CAPMTraining-srv
+    type: nodejs
+    path: gen/srv
+    requires:
+      - name: CAPMTraining-auth
+      - name: CAPMTraining-db
+    provides:
+      - name: srv-api
+        properties:
+          srv-url: ${default-url}
+    parameters:
+      buildpack: nodejs_buildpack
+      instances: 1
+    build-parameters:
+      builder: npm-ci
+
+  - name: CAPMTraining-db-deployer
+    type: hdb
+    path: gen/db
+    requires:
+      - name: CAPMTraining-db
+  - name: CAPMTraining-destination-content
+    type: com.sap.application.content
+    requires:
+    - name: CAPMTraining-destination-service
+      parameters:
+        content-target: true
+    - name: CAPMTraining-html5-repo-host
+      parameters:
+        service-key:
+          name: CAPMTraining-repo-host-key
+    - name: CAPMTraining-auth
+      parameters:
+        service-key:
+          name: CAPMTraining-xsuaa-srv-key
+    parameters:
+      content:
+        instance:
+          destinations:
+          - Name: CAPMTraining
+            ServiceInstanceName: CAPMTraining-html5-repo-host
+            ServiceKeyName: CAPMTraining-repo-host-key
+            sap.cloud.service: customui
+          - Authentication: OAuth2UserTokenExchange
+            Name: CAPMTraining-auth
+            ServiceInstanceName: CAPMTraining-auth
+            ServiceKeyName: CAPMTraining-auth-key
+            sap.cloud.service: customui
+          existing_destinations_policy: ignore
+    build-parameters:
+      no-source: true
+  - name: CAPMTraining-app-deployer
+    type: com.sap.application.content
+    path: gen
+    requires:
+      - name: CAPMTraining-auth
+      - name: srv-api
+      - name: CAPMTraining-html5-repo-host
+        parameters:
+          config:
+            HTML5Runtime_enabled: true
+          content-target: true
+    build-parameters:
+      build-result: app/
+      requires:
+        - artifacts:
+            - incidentui.zip
+          name: incidentui
+          target-path: app/
+        - artifacts:
+            - customui.zip
+          name: customui
+          target-path: app/
+
+  - name: incidentui
+    type: html5
+    path: app/incidentui
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands:
+        - npm install
+        - npm run build:cf
+      supported-platforms: []
+
+  - name: customui
+    type: html5
+    path: app/customui
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands:
+        - npm install
+        - npm run build:cf
+      supported-platforms: []
+
+resources:
+  - name: CAPMTraining-auth
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: xsuaa
+      service-plan: application
+      path: ./xs-security.json
+      config:
+        xsappname: CAPMTraining-${org}-${space}
+        tenant-mode: dedicated
+        oauth2-configuration:
+          credential-types:
+            - binding-secret
+            - x509
+
+  - name: CAPMTraining-db
+    type: com.sap.xs.hdi-container
+    parameters:
+      service: hana
+      service-plan: hdi-shared
+
+  - name: CAPMTraining-html5-repo-host
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: html5-apps-repo
+      service-plan: app-host
+
+  - name: CAPMTraining-destination-service
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: destination
+      service-plan: lite
+      config:
+        HTML5Runtime_enabled: true
+        version: 1.0.0
+        init_data:
+          instance:
+            existing_destinations_policy: update
+            destinations:
+              - Name: ui5
+                URL: https://ui5.sap.com
+                Authentication: NoAuthentication
+                ProxyType: Internet
+                Type: HTTP
+
+parameters:
+  deploy_mode: html5-repo
+  enable-parallel-deployments: true
+
+build-parameters:
+  before-all:
+    - builder: custom
+      commands:
+        - npm ci
+        - npx cds build --production
