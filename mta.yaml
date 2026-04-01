@@ -10,6 +10,7 @@ modules:
     requires:
       - name: CAPMTraining-auth
       - name: CAPMTraining-db
+      - name: destinationService
     provides:
       - name: srv-api
         properties:
@@ -144,7 +145,11 @@ resources:
                 Authentication: NoAuthentication
                 ProxyType: Internet
                 Type: HTTP
-
+  - name: destinationService
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: destination
+      service-plan: lite   # or standard
 parameters:
   deploy_mode: html5-repo
   enable-parallel-deployments: true
