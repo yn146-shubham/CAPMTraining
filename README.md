@@ -1,4 +1,4 @@
-# Getting Started
+# CAPM Training
 Sample ENV
 
 VCAP_SERVICES={<<Your Hana DB Connection>>}
